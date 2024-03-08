@@ -21,7 +21,7 @@ class NuevoSorteo:
                             num_pares INTEGER, num_impares INTEGER,
                             est_pares INTEGER, est_impares INTEGER,
                             num_bajos INTEGER, num_altos INTEGER,
-                            secuencias INTEGER, terminaciones TEXT,
+                            secuencias INTEGER, decenas TEXT, terminaciones TEXT,
                             distribucion TEXT, desviacion_estandar REAL,
                             suma_total INTEGER, suma_total_con_estrellas INTEGER)''')
         self.conn.commit()
@@ -31,9 +31,9 @@ class NuevoSorteo:
             escrutinio_serializado = json.dumps(escrutinio_json) if not isinstance(escrutinio_json, str) else escrutinio_json
             
             self.cursor.execute('''INSERT INTO resultados_sorteos (fecha, dia_semana, id_sorteo, anyo, numero, premio_bote, apuestas, combinacion, combinacion_acta, premios, escrutinio,
-                                    num_pares, num_impares, est_pares, est_impares, num_bajos, num_altos, secuencias, terminaciones, distribucion, desviacion_estandar, suma_total, suma_total_con_estrellas)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                                (fecha, dia_semana, sorteo_id, anyo, numero, premio_bote, apuestas, combinacion, combinacion_acta, premios, escrutinio_serializado, None, None, None, None, None, None, None, None, None, None, None, None))
+                                    num_pares, num_impares, est_pares, est_impares, num_bajos, num_altos, secuencias, decenas, terminaciones, distribucion, desviacion_estandar, suma_total, suma_total_con_estrellas)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                                (fecha, dia_semana, sorteo_id, anyo, numero, premio_bote, apuestas, combinacion, combinacion_acta, premios, escrutinio_serializado, None, None, None, None, None, None, None, None, None, None, None, None, None))
             self.conn.commit()
 
             if verbose:
@@ -117,6 +117,37 @@ class NuevoSorteo:
                                 SET secuencias = ?
                                 WHERE id_sorteo = ?''',
                             (secuencias, sorteo_id))
+        self.conn.commit()
+
+    # CLASIFICACIÓN POR DECENAS
+    def clasificar_por_decenas(self, sorteo_id, combinacion, verbose=False):
+        decenas = {'1ª Decena': 0, '2ª Decena': 0, '3ª Decena': 0, '4ª Decena': 0, '5ª Decena': 0}
+        numeros = [int(n) for n in combinacion.split('-')[:5]]
+        
+        for numero in numeros:
+            if 1 <= numero <= 10:
+                decenas['1ª Decena'] += 1
+            elif 11 <= numero <= 20:
+                decenas['2ª Decena'] += 1
+            elif 21 <= numero <= 30:
+                decenas['3ª Decena'] += 1
+            elif 31 <= numero <= 40:
+                decenas['4ª Decena'] += 1
+            elif 41 <= numero <= 50:
+                decenas['5ª Decena'] += 1
+
+        decenas_json = json.dumps(decenas)
+
+        if verbose:
+            print(f"La combinación {combinacion} tiene la siguiente distribución por decenas: {decenas_json}")
+        
+        self.actualizar_decenas(sorteo_id, decenas_json)
+
+    def actualizar_decenas(self, sorteo_id, decenas_json):
+        self.cursor.execute('''UPDATE resultados_sorteos
+                          SET decenas = ?
+                          WHERE id_sorteo = ?''',
+                       (decenas_json, sorteo_id))
         self.conn.commit()
     
     # CLASIFICACION POR TERMINACIONES
