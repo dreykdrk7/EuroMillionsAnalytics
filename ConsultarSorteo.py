@@ -40,31 +40,33 @@ class ConsultaSorteo:
 
         # Preparar los números y estrellas para la consulta
         combinacion_usuario = self.crear_combinacion_usuario(numeros, estrellas)
-        cursor.execute("SELECT id_sorteo, combinacion, escrutinio FROM resultados_sorteos WHERE fecha = ?", (fecha_sorteo,))
+        cursor.execute("SELECT id_sorteo, combinacion, premio_bote,escrutinio FROM resultados_sorteos WHERE fecha = ?", (fecha_sorteo,))
         sorteo = cursor.fetchone()
 
         if sorteo:
-            _, combinacion_sorteo, escrutinio_json = sorteo
-            print(combinacion_sorteo)
-
-            aciertos_numeros, aciertos_estrellas = self.contar_aciertos(combinacion_usuario, combinacion_sorteo)
-
+            _, combinacion_sorteo, premio_bote, escrutinio_json = sorteo
             escrutinio = json.loads(escrutinio_json)
 
-            for categoria in escrutinio:
-                try:
+            print(f"La combinación del usuario es: {combinacion_usuario}")
+            print(f"La combinación ganadora del sorteo es: {combinacion_sorteo}")
+            aciertos_numeros, aciertos_estrellas = self.contar_aciertos(combinacion_usuario, combinacion_sorteo)
+            print(f"Números acertados: {aciertos_numeros} - Estrellas acertadas: {aciertos_estrellas}")
+
+            # Verificamos si hay acertantes para la categoría 1
+            categoria_1 = next((cat for cat in escrutinio if cat['categoria'] == 1), None)
+            if categoria_1 and int(categoria_1['ganadores']) == 0 and aciertos_numeros == 5 and aciertos_estrellas == 2:
+                print(f"No hay acertantes para la categoría 1. Premio Bote: {premio_bote}")
+            else:
+                for categoria in escrutinio:
                     tipo_split = categoria["tipo"].split()
                     aciertos_necesarios_num = int(tipo_split[1])
                     aciertos_necesarios_est = int(tipo_split[3])
-                except ValueError as e:
-                    print(f"Error al procesar la categoría {categoria['tipo']}: {e}")
-                    continue
 
-                if aciertos_numeros == aciertos_necesarios_num and aciertos_estrellas == aciertos_necesarios_est:
-                    print(f"Categoría: {categoria['categoria']}, Premio: {categoria['premio']}, Ganadores: {categoria['ganadores']}, Ganadores en EU: {categoria['ganadores_eu']}")
-                    break
-            else:
-                print("No hay premio para esta combinación.")
+                    if aciertos_numeros == aciertos_necesarios_num and aciertos_estrellas == aciertos_necesarios_est:
+                        print(f"Categoría: {categoria['categoria']}, Premio: {categoria['premio']}, Ganadores: {categoria['ganadores']}, Ganadores en EU: {categoria['ganadores_eu']}")
+                        break
+                else:
+                    print("No hay premio para esta combinación.")
         else:
             print("No se encontró el sorteo para la fecha proporcionada.")
 
@@ -74,4 +76,4 @@ if __name__ == '__main__':
     # Uso de ejemplo
     db_path = 'euromillones_database.db'
     consulta = ConsultaSorteo(db_path)
-    consulta.consulta_premio('2024-03-01', [1, 7, 20, 4, 5], [4, 3])
+    consulta.consulta_premio('2024-03-01', [4, 7, 19, 20, 34], [4, 2])
