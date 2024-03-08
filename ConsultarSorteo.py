@@ -18,7 +18,6 @@ class ConsultaSorteo:
         return self.combinacion_usuario
 
     def contar_aciertos(self, combinacion_usuario, combinacion_sorteo):
-        # Dividir las combinaciones en números y estrellas
         partes_usuario = combinacion_usuario.split(' - ')
         numeros_usuario = set(map(int, partes_usuario[:5]))
         estrellas_usuario = set(map(int, partes_usuario[5:]))
@@ -27,7 +26,6 @@ class ConsultaSorteo:
         numeros_sorteo = set(map(int, partes_sorteo[:5]))
         estrellas_sorteo = set(map(int, partes_sorteo[5:]))
 
-        # Contar aciertos
         aciertos_numeros = len(numeros_usuario.intersection(numeros_sorteo))
         aciertos_estrellas = len(estrellas_usuario.intersection(estrellas_sorteo))
 
@@ -38,7 +36,6 @@ class ConsultaSorteo:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        # Preparar los números y estrellas para la consulta
         combinacion_usuario = self.crear_combinacion_usuario(numeros, estrellas)
         cursor.execute("SELECT id_sorteo, combinacion, premio_bote,escrutinio FROM resultados_sorteos WHERE fecha = ?", (fecha_sorteo,))
         sorteo = cursor.fetchone()
@@ -49,10 +46,10 @@ class ConsultaSorteo:
 
             print(f"La combinación del usuario es: {combinacion_usuario}")
             print(f"La combinación ganadora del sorteo es: {combinacion_sorteo}")
+
             aciertos_numeros, aciertos_estrellas = self.contar_aciertos(combinacion_usuario, combinacion_sorteo)
             print(f"Números acertados: {aciertos_numeros} - Estrellas acertadas: {aciertos_estrellas}")
 
-            # Verificamos si hay acertantes para la categoría 1
             categoria_1 = next((cat for cat in escrutinio if cat['categoria'] == 1), None)
             if categoria_1 and int(categoria_1['ganadores']) == 0 and aciertos_numeros == 5 and aciertos_estrellas == 2:
                 print(f"No hay acertantes para la categoría 1. Premio Bote: {premio_bote}")
