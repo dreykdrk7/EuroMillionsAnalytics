@@ -103,7 +103,7 @@ if __name__ == '__main__':
                     except ValueError:
                         fecha_sorteo = datetime.strptime("2010-01-01 22:00", "%Y-%m-%d %H:%M").date()
                 
-                    db.insert_combinacion(sorteo["id_sorteo"], sorteo["combinacion"], str(fecha_sorteo), 
+                    db.insert_combinacion(sorteo["id_sorteo"], sorteo["combinacion"].strip(), str(fecha_sorteo), 
                                         sorteo.get("dia_semana", ""), sorteo.get("anyo", ""), 
                                         sorteo.get("numero", 0), sorteo.get("premio_bote", ""), 
                                         sorteo.get("apuestas", ""), sorteo.get("combinacion_acta", ""), 

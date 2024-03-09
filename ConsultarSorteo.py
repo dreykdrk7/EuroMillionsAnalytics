@@ -3,7 +3,7 @@ import json
 
 class ConsultaSorteo:
     def __init__(self, db_path):
-        self.db_path = db_path
+        self.db_path = f"data/{db_path}"
 
     def crear_combinacion_usuario(self, numeros, estrellas):
         if isinstance(numeros, str) and isinstance(estrellas, str):
