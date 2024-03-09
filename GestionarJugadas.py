@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime
+import pandas as pd
 
 class GestionJugadas:
     def __init__(self, combinacion):
@@ -91,32 +91,67 @@ class GestionJugadas:
         self.cursor.execute(sql, (self.id_jugada, fecha_sorteo, coste_apuesta, premio_ganado, balance_actualizado))
         self.conexion.commit()
 
-    def resumen_jugada_por_combinacion(self, combinacion):
-        id_jugada = self.buscar_id_jugada(combinacion)
-        if id_jugada is None:
-            print("La combinación proporcionada no corresponde a ninguna jugada activa.")
-            return
+    def obtener_detalles(self):
+        sql_jugada = """
+        SELECT fecha_inicio, balance_inicial, descripcion, tipo_jugada
+        FROM jugadas_activas
+        WHERE id_jugada = ?;
+        """
+        self.cursor.execute(sql_jugada, (self.id_jugada,))
+        detalles_jugada = self.cursor.fetchone()
         
-        sql = """
+        if detalles_jugada:
+            fecha_inicio, balance_inicial, descripcion, tipo_jugada = detalles_jugada
+            return fecha_inicio, balance_inicial, descripcion, tipo_jugada
+        else:
+            print("No se encontraron detalles para la jugada especificada.")
+            return None, None, None, None
+    
+    def obtener_lista_resultados(self):
+        # Obtener resultados de sorteos para la jugada
+        sql_resultados = """
         SELECT fecha_sorteo, coste_apuesta, premio_ganado, balance_post_sorteo
         FROM resultados_jugadas
         WHERE id_jugada = ?
         ORDER BY fecha_sorteo
         """
-        self.cursor.execute(sql, (id_jugada,))
-        resultados = self.cursor.fetchall()
+        self.cursor.execute(sql_resultados, (self.id_jugada,))
+        return self.cursor.fetchall()
+    
+    def generar_sumario(self, combinacion):
+        self.buscar_id_jugada(combinacion)
+        if self.id_jugada is None:
+            print("La combinación proporcionada no corresponde a ninguna jugada activa.")
+            return pd.DataFrame()
+        
+        fecha_inicio, balance_inicial, descripcion, tipo_jugada = self.obtener_detalles()
+        resultados = self.obtener_lista_resultados()
         
         if resultados:
-            print(f"Resumen de la jugada: {combinacion}")
-            print(f"{'Fecha Sorteo':<15} {'Coste Apuesta':<15} {'Premio Ganado':<15} {'Balance Post Sorteo':<20}")
-            for resultado in resultados:
-                fecha_sorteo, coste_apuesta, premio_ganado, balance_post_sorteo = resultado
-                print(f"{fecha_sorteo:<15} {coste_apuesta:<15.2f} {premio_ganado:<15.2f} {balance_post_sorteo:<20.2f}")
+            df = pd.DataFrame(resultados, columns=['Fecha Sorteo', 'Coste Apuesta', 'Premio Ganado', 'Balance Post Sorteo'])
+            total_invertido = df['Coste Apuesta'].sum()  # Corregido, asegúrate de que el nombre de la columna es correcto.
+            total_ganado = df['Premio Ganado'].sum()
+            balance_final = df['Balance Post Sorteo'].iloc[-1]
+            
+            print(f"Descripción de la jugada: {descripcion}")
+            print(f"Combinación jugada: {combinacion}")
+            print(f"Tipo: {tipo_jugada}")
+            print(f"Fecha inicio de la jugada: {fecha_inicio}")
+            print(f"Balance inicial: {balance_inicial}")
+            print(f"Total invertido: {total_invertido}")
+            print(f"Total ganado: {total_ganado}")
+            print(f"Balance final: {balance_final}")
+            
+            return df
         else:
             print("No se encontraron resultados para la jugada especificada.")
-
+            return pd.DataFrame()
+    
     def cerrar_conexion(self):
-        self.conexion.close()
+        if self.cursor is not None:
+            self.cursor.close()
+        if self.conexion is not None:
+            self.conexion.close()
 
 # Ejemplo de uso:
 if __name__ == "__main__":
@@ -126,5 +161,7 @@ if __name__ == "__main__":
     gestion_jugadas.agregar_jugada_activa("2023-10-01", 10000, "Mi primera jugada", "combinada")
 
     gestion_jugadas.registrar_resultado(combinacion, "2023-10-02", 2.5, 0)
-    print("Balance actual de la jugada:", gestion_jugadas.consultar_balance())
+    # print("Balance actual de la jugada:", gestion_jugadas.consultar_balance())
+
+    print(gestion_jugadas.generar_sumario(combinacion))
     gestion_jugadas.cerrar_conexion()
