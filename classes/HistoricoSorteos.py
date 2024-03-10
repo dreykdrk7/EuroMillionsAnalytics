@@ -1,6 +1,6 @@
 import sqlite3
 import json
-from ConsultarSorteo import ConsultaSorteo
+from classes.ConsultarSorteo import ConsultaSorteo
 import pandas as pd
 
 class HistoricoSorteos(ConsultaSorteo):

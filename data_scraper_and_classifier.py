@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from time import sleep
 from dateutil.relativedelta import relativedelta
-from NuevoSorteo import NuevoSorteo
+from classes.NuevoSorteo import NuevoSorteo
 
 
 parser = argparse.ArgumentParser(description='Recopila y clasifica datos de sorteos de Euromillones.')

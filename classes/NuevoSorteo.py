@@ -3,7 +3,7 @@ import json
 
 class NuevoSorteo:
     def __init__(self, db_name):
-        self.db_name = f"{db_name}.db"
+        self.db_name = f"./data/{db_name}.db"
         self.connect_db()
         self.create_table()
 

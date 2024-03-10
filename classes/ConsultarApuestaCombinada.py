@@ -1,4 +1,4 @@
-from HistoricoSorteos import HistoricoSorteos
+from classes.HistoricoSorteos import HistoricoSorteos
 import itertools
 from itertools import combinations
 import pandas as pd
