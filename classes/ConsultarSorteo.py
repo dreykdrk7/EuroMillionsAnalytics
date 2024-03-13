@@ -2,7 +2,7 @@ import sqlite3
 import json
 
 class ConsultaSorteo:
-    def __init__(self, db_path):
+    def __init__(self, db_path='euromillones_database.db'):
         self.db_path = f"data/{db_path}"
 
     def crear_combinacion_usuario(self, numeros, estrellas):
@@ -72,7 +72,7 @@ class ConsultaSorteo:
         cursor = conn.cursor()
 
         combinacion_usuario = self.crear_combinacion_usuario(numeros, estrellas)
-        cursor.execute("SELECT id_sorteo, combinacion, premio_bote,escrutinio FROM resultados_sorteos WHERE fecha = ?", (fecha_sorteo,))
+        cursor.execute("SELECT id_sorteo, combinacion, premio_bote, escrutinio FROM resultados_sorteos WHERE fecha = ?", (fecha_sorteo,))
         sorteo = cursor.fetchone()
 
         if sorteo:
@@ -85,6 +85,7 @@ class ConsultaSorteo:
             print("No se encontró el sorteo para la fecha proporcionada.")
 
         conn.close()
+
 
 if __name__ == '__main__':
     # Uso de ejemplo
