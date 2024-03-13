@@ -1,12 +1,13 @@
 import pandas as pd
-from classes.stats.EstadisticasFrecuencia import EstadisticasFrecuencia
 from classes.stats.ObtenerSorteos import ObtenerSorteos
+from classes.stats.EstadisticasFrecuencia import EstadisticasFrecuencia
+from classes.stats.EstadisticasSecuencia import EstadisticasSecuencia
 
 if __name__ == '__main__':
     # Asume que ObtenerSorteos tiene un método obtener_todos() que devuelve una lista de sorteos
-    año = 2019
+    año = 2004
     obtener_sorteos = ObtenerSorteos()  # Asegúrate de pasar la ruta correcta de tu base de datos
-    sorteos = obtener_sorteos.obtener_sorteos_año(año)  # Aquí puedes especificar desde qué año deseas obtener los sorteos, o quitar el parámetro para obtener todos
+    sorteos = obtener_sorteos.obtener_todos()  # Aquí puedes especificar desde qué año deseas obtener los sorteos, o quitar el parámetro para obtener todos
 
     # Asegúrate de que los sorteos obtenidos estén en el formato correcto para la clase MayorFrecuencia
     # Es decir, cada sorteo debería ser un diccionario con 'fecha', 'numeros' y 'estrellas'
@@ -18,18 +19,22 @@ if __name__ == '__main__':
             'estrellas': sorteo['estrellas']
         })
 
-    gestor_estadisticas = EstadisticasFrecuencia()
-    gestor_estadisticas.procesar_sorteos(sorteos_procesados, año)
+    estadisticas_secuencia = EstadisticasSecuencia(sorteos_procesados)
+    # estadisticas_secuencia.calcular_secuencias()
+    estadisticas_secuencia.mostrar_estadisticas(37, 'n')
+    
+    # gestor_estadisticas = EstadisticasFrecuencia()
+    # gestor_estadisticas.procesar_sorteos(sorteos_procesados, año)
 
-    # Ahora puedes obtener las estadísticas más y menos frecuentes directamente desde la base de datos
-    print("Números más frecuentes globalmente:", gestor_estadisticas.obtener_mas_frecuentes(tabla='FrecuenciaNumeros', X=10))
-    print("Números menos frecuentes globalmente:", gestor_estadisticas.obtener_menos_frecuentes(tabla='FrecuenciaNumeros', X=10))
-    print("Estrellas más frecuentes globalmente:", gestor_estadisticas.obtener_mas_frecuentes(tabla='FrecuenciaEstrellas', X=10))
-    print("Estrellas menos frecuentes globalmente:", gestor_estadisticas.obtener_menos_frecuentes(tabla='FrecuenciaEstrellas', X=10))
+    # # Ahora puedes obtener las estadísticas más y menos frecuentes directamente desde la base de datos
+    # print("Números más frecuentes globalmente:", gestor_estadisticas.obtener_mas_frecuentes(tabla='FrecuenciaNumeros', X=10))
+    # print("Números menos frecuentes globalmente:", gestor_estadisticas.obtener_menos_frecuentes(tabla='FrecuenciaNumeros', X=10))
+    # print("Estrellas más frecuentes globalmente:", gestor_estadisticas.obtener_mas_frecuentes(tabla='FrecuenciaEstrellas', X=10))
+    # print("Estrellas menos frecuentes globalmente:", gestor_estadisticas.obtener_menos_frecuentes(tabla='FrecuenciaEstrellas', X=10))
 
-    # Ejemplos de consultas para un año específico
-    print(f"Números más frecuentes en {año}:", gestor_estadisticas.obtener_mas_frecuentes(tabla='FrecuenciaNumeros', año=año, X=10))
-    print(f"Números menos frecuentes en {año}:", gestor_estadisticas.obtener_menos_frecuentes(tabla='FrecuenciaNumeros', año=año, X=10))
+    # # Ejemplos de consultas para un año específico
+    # print(f"Números más frecuentes en {año}:", gestor_estadisticas.obtener_mas_frecuentes(tabla='FrecuenciaNumeros', año=año, X=10))
+    # print(f"Números menos frecuentes en {año}:", gestor_estadisticas.obtener_menos_frecuentes(tabla='FrecuenciaNumeros', año=año, X=10))
 
-    # Cierra la conexión a la base de datos
-    gestor_estadisticas.cerrar_conexion()
+    # # Cierra la conexión a la base de datos
+    # gestor_estadisticas.cerrar_conexion()
