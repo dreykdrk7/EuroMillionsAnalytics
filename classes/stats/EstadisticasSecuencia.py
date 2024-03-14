@@ -51,23 +51,16 @@ class EstadisticasSecuencia:
             numeros_actual = set(sorteo["numeros"])
             estrellas_actual = set(sorteo["estrellas"])
             
-            # Identifica los números y estrellas que aparecen en sorteos consecutivos
             numeros_consecutivos = sorteos_anteriores["numeros"].intersection(numeros_actual)
             estrellas_consecutivas = sorteos_anteriores["estrellas"].intersection(estrellas_actual)
             
-            # Actualiza el conteo de secuencias consecutivas para el año del sorteo
             for numero in numeros_consecutivos:
                 secuencias_numeros_por_año[año_sorteo][numero] += 1
             for estrella in estrellas_consecutivas:
                 secuencias_estrellas_por_año[año_sorteo][estrella] += 1
             
-            # Prepara para el próximo sorteo
             sorteos_anteriores = {"numeros": numeros_actual, "estrellas": estrellas_actual}
 
-        # print(secuencias_numeros_por_año)
-        # print(secuencias_estrellas_por_año)
-        # quit()
-        # Guardar las estadísticas en la base de datos
         self.guardar_secuencias(secuencias_numeros_por_año, 'SecuenciasNumeros')
         self.guardar_secuencias(secuencias_estrellas_por_año, 'SecuenciasEstrellas')
 
@@ -99,18 +92,3 @@ class EstadisticasSecuencia:
                 print(f"Año {año}: Valor {valor} aparece {veces} veces en sorteos consecutivos.")
         except Exception as e:
             print(f"Error al mostrar estadísticas: {e}")
-
-    # def mostrar_estadisticas(self):
-    #     print("\nResumen de Secuencias de Números por Año:")
-    #     for año in sorted({año for datos in self.secuencias_numeros.values() for año in datos}):
-    #         print(f"Año {año}:")
-    #         for numero, datos_año in self.secuencias_numeros.items():
-    #             if año in datos_año:
-    #                 print(f"  Número {numero} se repite {datos_año[año]+1} veces en secuencia")
-
-    #     print("\nResumen de Secuencias de Estrellas por Año:")
-    #     for año in sorted({año for datos in self.secuencias_estrellas.values() for año in datos}):
-    #         print(f"Año {año}:")
-    #         for estrella, datos_año in self.secuencias_estrellas.items():
-    #             if año in datos_año:
-    #                 print(f"  Estrella {estrella} se repite {datos_año[año]+1} veces en secuencia")
