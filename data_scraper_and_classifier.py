@@ -1,140 +1,113 @@
 import argparse
-import requests
-import json
 from datetime import datetime
 from time import sleep
 from dateutil.relativedelta import relativedelta
-from classes.NuevoSorteo import NuevoSorteo
+from modules.database.db_handler import DatabaseHandler
+from modules.database.queries import Queries
+import requests
 
-
-parser = argparse.ArgumentParser(description='Recopila y clasifica datos de sorteos de Euromillones.')
-parser.add_argument('--historico', action='store_true', help='Recopilar todo el histórico de sorteos desde una fecha específica.')
-parser.add_argument('--inicio', type=str, help='Fecha de inicio para recopilar el histórico en formato YYYY-MM-DD. Solo funciona si --historico está presente.')
-parser.add_argument('--periodo', type=str, choices=['semana', 'mes'], default='semana', help='Especifica el período para los últimos sorteos: "semana" o "mes".')
+# Argument parser setup
+parser = argparse.ArgumentParser(description='Fetch and classify Euromillions draw data.')
+parser.add_argument('--historical', action='store_true', help='Fetch the entire history of draws from a specific start date.')
+parser.add_argument('--start_date', type=str, help='Start date for historical data in YYYY-MM-DD format. Works only with --historical.')
+parser.add_argument('--period', type=str, choices=['week', 'month'], default='week', help='Period for recent draws: "week" or "month".')
 args = parser.parse_args()
-fecha_fin = datetime.now()
 
+# Define constants
+API_URL = 'https://www.loteriasyapuestas.es/servicios/buscadorSorteos'
+DB_PATH = 'data/euromillones.db'
 
-if __name__ == '__main__':
+# Define headers
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/javascript, */*; q=0.01",
+    "Accept-Language": "es-ES,es;q=0.5",
+    "Accept-Encoding": "gzip, deflate, br, zstd",
+    "Referer": "https://www.loteriasyapuestas.es/es/resultados/euromillones",
+    "X-Requested-With": "XMLHttpRequest",
+    "Sec-GPC": "1",
+    "Cookie": "cms=AD7qKYF7b8H/fN5iewO/dg$$; usr-lang=es; UUID=WEB-d3122575-a4d2-4b02-bb07-f4684ac953b9",
+}
 
-    if args.historico:
+# Fetch and process draws
+def fetch_draws(start_date, end_date, db_handler):
+    """
+    Fetch draws from the API and process them.
 
-        if args.inicio:
-            fecha_inicio = datetime.strptime(args.inicio, '%Y-%m-%d')
-        else:
-            fecha_inicio = datetime.strptime('2004-01-01', '%Y-%m-%d')
-    else:
-
-        if args.periodo == 'semana':
-            fecha_inicio = fecha_fin - relativedelta(days=8)
-        elif args.periodo == 'mes':
-            fecha_inicio = fecha_fin - relativedelta(days=32)
-
-    db = NuevoSorteo('euromillones_database')
-
-    # URL de la API
-    url = 'https://www.loteriasyapuestas.es/servicios/buscadorSorteos'
-
-    while fecha_inicio < fecha_fin:
-        fecha_fin_ciclo = fecha_inicio + relativedelta(months=3)
-        if fecha_fin_ciclo > fecha_fin:
-            fecha_fin_ciclo = fecha_fin
-
-        fecha_inicio_str = fecha_inicio.strftime('%Y%m%d')
-        fecha_fin_ciclo_str = fecha_fin_ciclo.strftime('%Y%m%d')
+    Args:
+        start_date (datetime): Start date for the draw fetch.
+        end_date (datetime): End date for the draw fetch.
+        db_handler (DatabaseHandler): Database handler instance.
+    """
+    while start_date < end_date:
+        period_end = start_date + relativedelta(months=3)
+        if period_end > end_date:
+            period_end = end_date
 
         params = {
             'game_id': 'EMIL',
             'celebrados': 'true',
-            'fechaInicioInclusiva': fecha_inicio_str,
-            'fechaFinInclusiva': fecha_fin_ciclo_str
+            'fechaInicioInclusiva': start_date.strftime('%Y%m%d'),
+            'fechaFinInclusiva': period_end.strftime('%Y%m%d')
         }
 
-        response = requests.get(url, params=params)
+        print(f"Fetching draws between {start_date} and {period_end}...")
+        try:
+            response = requests.get(API_URL, params=params, headers=HEADERS)
+            response.raise_for_status()
 
-        print(f"Buscando sorteos entre las fechas {fecha_inicio} y {fecha_fin_ciclo}")
-        if response.status_code == 200:
             try:
-                data = response.json()
-                if not isinstance(data, list):
-                    print("Respuesta de la API no es un objeto JSON esperado.")
+                draws = response.json()
+                if not isinstance(draws, list):
+                    print("Unexpected API response format.")
                     continue
-            except ValueError:
-                print("Error: Respuesta de la API no es un JSON válido.")
-                continue
+                process_draws(draws, db_handler)
+            except ValueError as e:
+                print(f"Invalid JSON response: {e}")
+            except Exception as e:
+                print(f"Error processing draws: {e}")
 
+        except requests.exceptions.RequestException as e:
+            print(f"Network error occurred: {e}")
+            print("Retrying after a brief wait...")
+            sleep(30)
 
-            fecha_inicio = fecha_fin_ciclo + relativedelta(days=1)
-            print("Descansando unos segundos antes de la siguiente petición.....")
-            sleep(5)
+        start_date = period_end + relativedelta(days=1)
+        print("Waiting before the next request...")
+        sleep(20)
 
-            for sorteo in data:
+def process_draws(draws, db_handler):
+    """
+    Process and insert draw data into the database.
 
-                if "id_sorteo" not in sorteo and "fecha_sorteo" not in sorteo:
-                    print("El sorteo no contiene todas las claves esperadas.")
-                    continue
+    Args:
+        draws (list): List of draw data.
+        db_handler (DatabaseHandler): Database handler instance.
+    """
+    for draw in draws:
+        try:
+            if not db_handler.is_draw_registered(draw["id_sorteo"]):
+                db_handler.insert_draw(draw)
+                db_handler.classify_draw(draw["id_sorteo"], draw["combinacion"])
+            else:
+                print(f"Draw {draw['id_sorteo']} is already registered.")
+        except Exception as e:
+            print(f"Error processing draw {draw.get('id_sorteo', 'Unknown')}: {e}")
 
-                try:
-                    esta_registrado = db.sorteo_registrado(sorteo["id_sorteo"])
+if __name__ == '__main__':
+    end_date = datetime.now()
 
-                    if esta_registrado:
-                        print(f"El sorteo {sorteo['id_sorteo']} ya está registrado en la base de datos")
-                        continue
-                except TypeError:
-                    print(f"Error: el objeto 'sorteo' no tiene el formato esperado. ID Sorteo: {sorteo.get('id_sorteo', 'Desconocido')}")
-                    print(sorteo)
-                    continue
-                except Exception as e:
-                    print(f"Error de tipo {type(e).__name__} al procesar el sorteo {sorteo.get('id_sorteo', 'Desconocido')}: {e}")
-                    continue
+    if args.historical:
+        start_date = datetime.strptime(args.start_date, '%Y-%m-%d') if args.start_date else datetime(2004, 1, 1)
+    else:
+        if args.period == 'week':
+            start_date = end_date - relativedelta(weeks=1)
+        elif args.period == 'month':
+            start_date = end_date - relativedelta(months=1)
 
-                try:
-                    # print(json.dumps(sorteo, indent=4))
-                    # break
-                    # atributos_deseados = [
-                    #     "fecha_sorteo", "dia_semana", "id_sorteo",
-                    #     "anyo", "numero", "premio_bote", "apuestas",
-                    #     "recaudacion", "combinacion", "combinacion_acta",
-                    #     "premios", "fondo_bote", "escrutinio"
-                    # ]
+    db_handler = DatabaseHandler(DB_PATH)
 
-                    try:
-                        fecha_sorteo = datetime.strptime(sorteo["fecha_sorteo"], "%Y-%m-%d %H:%M:%S").date()
-                    except ValueError:
-                        fecha_sorteo = datetime.strptime("2010-01-01 22:00", "%Y-%m-%d %H:%M").date()
-                
-                    db.insert_combinacion(sorteo["id_sorteo"], sorteo["combinacion"].strip(), str(fecha_sorteo), 
-                                        sorteo.get("dia_semana", ""), sorteo.get("anyo", ""), 
-                                        sorteo.get("numero", 0), sorteo.get("premio_bote", ""), 
-                                        sorteo.get("apuestas", ""), sorteo.get("combinacion_acta", ""), 
-                                        sorteo.get("premios", ""), sorteo.get("escrutinio", []), verbose=True)
+    fetch_draws(start_date, end_date, db_handler)
 
-                    # Clasificación por figuras
-                    db.clasificar_por_figura(sorteo['id_sorteo'], sorteo["combinacion"], True)
-
-                    # Clasificación por rangos
-                    db.clasificar_por_rango(sorteo['id_sorteo'], sorteo["combinacion"], True)
-
-                    # Clasificación por secuencias
-                    db.clasificar_por_secuencia(sorteo['id_sorteo'], sorteo["combinacion"], True)
-
-                    # Clasificación por terminaciones
-                    db.clasificar_por_terminaciones(sorteo['id_sorteo'], sorteo["combinacion"], True)
-
-                    # Clasificación por distribución avanzada
-                    db.clasificar_por_distribucion_avanzada(sorteo['id_sorteo'], sorteo["combinacion"], True)
-
-                    # Clasificación por suma total
-                    db.clasificar_por_suma_total(sorteo['id_sorteo'], sorteo["combinacion"], True)
-
-                except Exception as e:
-                    print(f"Ocurrió un error al procesar el sorteo {sorteo['id_sorteo']} con fecha {sorteo['fecha_sorteo']}: {e}")
-                    continue
-
-        else:
-            print(f"Error al hacer la petición: {response.status_code}")
-
-        
-
-    db.close()
-
+    db_handler.close()
+    print("Process complete.")
