@@ -1,5 +1,6 @@
 import argparse
 import pandas as pd
+import json
 from modules.database.annual_statistics import AnnualStatistics
 from datetime import datetime
 
@@ -35,7 +36,7 @@ def update_current_year_statistics():
 
 def display_statistics(year):
     """
-    Fetch and display statistics for a specific year.
+    Fetch and display statistics for a specific year in a formatted table.
 
     Args:
         year (int): The year to filter the statistics for.
@@ -47,8 +48,33 @@ def display_statistics(year):
     df_filtered = df[df['year'] == year]
 
     if not df_filtered.empty:
-        print(f"Statistics for the year {year}:")
-        print(df_filtered)
+        print(f"\nStatistics for the year {year}:\n")
+
+        # Extract data for a more visual representation
+        numbers = json.loads(df_filtered.iloc[0]['numbers'])
+        stars = json.loads(df_filtered.iloc[0]['stars'])
+        figures = json.loads(df_filtered.iloc[0]['figures'])
+        ranges = json.loads(df_filtered.iloc[0]['ranges'])
+        parity = json.loads(df_filtered.iloc[0]['parity'])
+
+        # Create a DataFrame for numbers
+        numbers_df = pd.DataFrame(list(numbers.items()), columns=['Number', 'Frequency']).sort_values(by='Frequency', ascending=False)
+
+        # Create a DataFrame for stars
+        stars_df = pd.DataFrame(list(stars.items()), columns=['Star', 'Frequency']).sort_values(by='Frequency', ascending=False)
+
+        # Print numbers statistics
+        print("Number Frequencies:")
+        print(numbers_df.to_string(index=False))
+        print("\nStar Frequencies:")
+        print(stars_df.to_string(index=False))
+
+        # Print additional statistics
+        print("\nAdditional Statistics:")
+        print(f"Figures (Odd, Even): {figures}")
+        print(f"Ranges (Low, High): {ranges}")
+        print(f"Parity (Even Stars, Odd Stars): {parity}")
+
     else:
         print(f"No statistics found for the year {year}.")
 
