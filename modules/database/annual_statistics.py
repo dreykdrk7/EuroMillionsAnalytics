@@ -30,7 +30,9 @@ class AnnualStatistics:
             stars TEXT,
             figures TEXT,
             ranges TEXT,
-            parity TEXT
+            parity TEXT,
+            number_rentability TEXT,
+            star_rentability TEXT
         );
         """)
         self.connection.commit()
@@ -40,7 +42,7 @@ class AnnualStatistics:
         Calculate statistics for each year, updating for the current year if necessary.
         """
         rows = self.cursor.execute("""
-        SELECT num1, num2, num3, num4, num5, estrella1, estrella2, strftime('%Y', fecha_sorteo) as year 
+        SELECT num1, num2, num3, num4, num5, estrella1, estrella2, escrutinio, strftime('%Y', fecha_sorteo) as year 
         FROM resultados_sorteos
         """).fetchall()
 
@@ -50,13 +52,16 @@ class AnnualStatistics:
         for row in rows:
             numbers = row[:5]
             stars = row[5:7]
-            year = int(row[7])  # Convert year to int for easier comparison
+            scrutiny = json.loads(row[7])  # Deserialize the scrutiny field
+            year = int(row[8])  # Convert year to int for easier comparison
 
             # Initialize statistics for the year if not already done
             if year not in statistics_by_year:
                 statistics_by_year[year] = {
                     'number_counts': Counter(),
                     'star_counts': Counter(),
+                    'number_rentability': Counter(),
+                    'star_rentability': Counter(),
                     'figures': [0, 0],  # [odd_count, even_count]
                     'ranges': [0, 0],   # [low_count, high_count]
                     'parity': [0, 0]    # [even_stars, odd_stars]
@@ -65,6 +70,19 @@ class AnnualStatistics:
             # Count occurrences of numbers and stars
             statistics_by_year[year]['number_counts'].update(numbers)
             statistics_by_year[year]['star_counts'].update(stars)
+
+            # Calculate rentability
+            for entry in scrutiny:
+                try:
+                    prize = float(entry['premio'].replace(',', '')) if entry['premio'] else 0
+                    for number in numbers:
+                        statistics_by_year[year]['number_rentability'][number] += prize
+                    for star in stars:
+                        statistics_by_year[year]['star_rentability'][star] += prize
+                except (KeyError, ValueError, TypeError) as e:
+                    # Log the error but continue with the calculation
+                    print(f"Skipping invalid scrutiny entry: {entry}, Error: {e}")
+                    continue
 
             # Accumulate figures (odd/even distribution)
             odd_count = sum(1 for n in numbers if n % 2 != 0)
@@ -87,15 +105,17 @@ class AnnualStatistics:
         # Store or update annual statistics in the database
         for year, stats in statistics_by_year.items():
             self.cursor.execute("""
-                INSERT OR REPLACE INTO annual_statistics (year, numbers, stars, figures, ranges, parity)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO annual_statistics (year, numbers, stars, number_rentability, star_rentability, figures, ranges, parity)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 year,
-                json.dumps(stats['number_counts']),  # Serialize counts to JSON
-                json.dumps(stats['star_counts']),    # Serialize counts to JSON
-                json.dumps(stats['figures']),        # [odd_count, even_count]
-                json.dumps(stats['ranges']),         # [low_count, high_count]
-                json.dumps(stats['parity'])          # [even_stars, odd_stars]
+                json.dumps(stats['number_counts']),        # Serialize counts to JSON
+                json.dumps(stats['star_counts']),          # Serialize counts to JSON
+                json.dumps(stats['number_rentability']),   # Serialize rentability to JSON
+                json.dumps(stats['star_rentability']),     # Serialize rentability to JSON
+                json.dumps(stats['figures']),              # [odd_count, even_count]
+                json.dumps(stats['ranges']),               # [low_count, high_count]
+                json.dumps(stats['parity'])                # [even_stars, odd_stars]
             ))
 
         self.connection.commit()
